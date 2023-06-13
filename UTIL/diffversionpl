@@ -1,0 +1,8 @@
+#!/usr/bin/perl
+
+$A = `grep VERSION "$ARGV[0]"`;
+$B = `grep VERSION "$ARGV[1]"`;
+
+exit 1 if $A eq $B;
+exit 0;
+

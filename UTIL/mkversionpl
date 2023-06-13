@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+
+# Makefile usage:
+#
+# %: %.pl | VERSION.pl
+#	perlpp $< > $@
+#	@chmod 755 $@
+#
+# VERSION.pl: $(SRC)
+#	mkversionpl | grep -v MAKEDIR > $@.bkp; mv $@.bkp $@
+
+$CK_="\033[90m"; # color black
+$CD_="\033[0m";  # color default
+
+$PACKAGE	= `getversion -pkg`;
+$VERSION	= `getversion -ver`;
+$COPYLEFT	= `getversion -cpy`;
+#$SUBVERSION	= `mkdist -sub`;
+$SUBVERSION	= "none";
+#$MAKEDATE	= `date '+%Y%m%d.%H%M'`;
+$MAKEDATE	= `date '+%Y%m%d'`;
+$MAKEHOST	= `hostname`;
+$MAKEDIR	= `pwd | sed 's:$ENV{HOME}:~:'`;
+$MAKECPU	= `cat /proc/cpuinfo | grep 'model name' | head -1`;
+
+$PACKAGE	=~ s/\n//g;
+$VERSION	=~ s/\n//g;
+$COPYLEFT	=~ s/\n//g;
+$SUBVERSION	=~ s/\n//g;
+$MAKEDATE	=~ s/\n//g;
+$MAKEHOST	=~ s/\n//g;
+$MAKEDIR	=~ s/\n//g;
+$MAKECPU	=~ s/\n//g;
+
+$MAKECPU =~ s/\(R\)//g;
+$MAKECPU =~ s/\(TM\)//g;
+$MAKECPU =~ s/ CPU / /g;
+$MAKECPU =~ s/^[a-z \t]+:\h*//g;
+$MAKECPU =~ s/@ ([0-9.]+GHz)/($1)/g;
+
+$PKGNAME  = "$PACKAGE-$VERSION$SUBVERSION";
+$PKGNAME  = "$PACKAGE-$VERSION" if $SUBVERSION eq "none";
+$PKGMSG   = "$PKGNAME $COPYLEFT";
+#$PKGBUILT = "built $MAKEDATE on $MAKEHOST";
+$PKGBUILT = "built $MAKEDATE";
+$PKGLONG  = "$PKGMSG ($PKGBUILT)";
+
+$s .= "\n";
+$s .= "   \$PACKAGE = \"$PACKAGE\";\n";
+$s .= "   \$VERSION = \"$VERSION\";\n";
+$s .= "\$SUBVERSION = \"$SUBVERSION\";\n";
+$s .= "  \$COPYLEFT = \"$COPYLEFT\";\n";
+$s .= "\n";
+
+$s .= "   \$PKGNAME = \"$PKGNAME\";\n";
+$s .= "    \$PKGMSG = \"$PKGMSG\";\n";
+$s .= "  \$PKGBUILT = \"$PKGBUILT\";\n";
+$s .= "   \$PKGLONG = \"$PKGLONG\";\n";
+$s .= "\n";
+
+$s .= "  \$MAKEDATE = \"$MAKEDATE\";\n";
+$s .= "  \$MAKEHOST = \"$MAKEHOST\";\n";
+$s .= "   \$MAKEDIR = \"$MAKEDIR\";\n";
+$s .= "   \$MAKECPU = \"$MAKECPU\";\n";
+$s .= "\n";
+
+# print STDERR "${CK_}create VERSION.pl for $PACKAGE-$VERSION$SUBVERSION$CD_\n";
+
+print $s;
+

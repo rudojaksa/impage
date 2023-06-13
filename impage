@@ -1,0 +1,920 @@
+#!/usr/bin/perl
+#use strict;
+
+   $PACKAGE = "impage";
+   $VERSION = "0.3";
+$SUBVERSION = "none";
+  $COPYLEFT = "R.Jaksa 2021 GPLv3";
+
+   $PKGNAME = "impage-0.3";
+    $PKGMSG = "impage-0.3 R.Jaksa 2021 GPLv3";
+  $PKGBUILT = "built 20230613";
+   $PKGLONG = "impage-0.3 R.Jaksa 2021 GPLv3 (built 20230613)";
+# colors-0.1c (c) R.Jaksa 2008,2019, GPLv3
+# built: ~/prj/libraries/colors/colors.pl
+# installed: /map/colors/pl/colors.pl
+
+our $CR_="\033[31m"; # color red
+our $CG_="\033[32m"; # color green
+our $CY_="\033[33m"; # color yellow
+our $CB_="\033[34m"; # color blue
+our $CM_="\033[35m"; # color magenta
+our $CC_="\033[36m"; # color cyan
+our $CW_="\033[37m"; # color white
+our $CK_="\033[90m"; # color black
+our $CP_="\033[91m"; # color pink
+our $CL_="\033[92m"; # color lime
+our $CS_="\033[93m"; # color sulphur yellow
+our $CZ_="\033[94m"; # color azure
+our $CO_="\033[95m"; # color orchid
+our $CA_="\033[96m"; # color aqua cyan
+our $CF_="\033[97m"; # color fluorescent white
+our $CD_="\033[0m";  # color default
+
+# return length of string without escape sequences
+our sub esclen {
+  my $s = shift;
+  $s =~ s/\033\[[0-9]+m//g;
+  return length $s; }
+# corelib-0.1b (c) R.Jaksa 2012,2019, GPLv3
+# built: ~/prj/libraries/corelib/corelib.pl
+# installed: /map/corelib/pl/corelib.pl
+
+{
+
+# inar(\@a,$s) - check whether the string is in the array
+our sub inar {
+  my $a=$_[0];	# array ref
+  my $s=$_[1];	# string
+  for(@{$a}) { return 1 if $_ eq $s; }
+  return 0; }
+our sub ninar {	# not-inar
+  my $a=$_[0];	# array ref
+  my $s=$_[1];	# string
+  for(@{$a}) { return 0 if $_ eq $s; }
+  return 1; }
+
+# innar(\@a,$n) - check whether the number is in the array
+our sub innar {
+  my $a=$_[0];	# array ref
+  my $n=$_[1];	# number
+  for(@{$a}) { return 1 if $_ == $n; }
+  return 0; }
+our sub ninnar {	# not-innar
+  my $a=$_[0];	# array ref
+  my $n=$_[1];	# number
+  for(@{$a}) { return 0 if $_ == $n; }
+  return 1; }
+
+# pushq(\@a,$s) - string push unique, only if not there
+our sub pushq {
+  my $a=$_[0];	# array ref
+  my $s=$_[1];	# string
+  return if inar $a,$s;
+  push @{$a},$s; }
+
+# pushaq(\@a,\@r) - string per-array-element push unique, only if not there
+our sub pushaq {
+  my $a=$_[0];	# array ref
+  my $r=$_[1];	# array ref
+  for my $s (@{$r}) {
+    next if inar $a,$s;
+    push @{$a},$s; }}
+
+# pushnq(\@a,$n) - number push unique, only if not there
+our sub pushnq {
+  my $a=$_[0];	# array ref
+  my $n=$_[1];	# number
+  return if innar $a,$n;
+  push @{$a},$n; }
+
+# pushaq(\@a,\@r) - number per-array-element push unique, only if not there
+our sub pushnaq {
+  my $a=$_[0];	# array ref
+  my $r=$_[1];	# array ref
+  for my $n (@{$r}) {
+    next if innar $a,$n;
+    push @{$a},$n; }}
+
+# pushacp(\@a,\@a2) - make copy of a2 and push ref to it
+our sub pushacp {
+  my $a  = shift;	# target array ref
+  my @a2 = @{shift()};	# copy of array
+  push @{$a},\@a2; }
+
+}
+# helpman-0.2 (c) R.Jaksa 2015,2019, GPLv3
+# built: ~/prj/libraries/helpman/helpman.pl
+# installed: /map/helpman/pl/helpman.pl
+# require "colors.pl"
+
+{
+
+our sub printhelp {
+  my $help = shift;
+  my $colors = "CWRDKGM";
+
+  my $L = "\#\#\>";	# private  left brace
+  my $R = "\<\#\#";	# private right brace
+  my %STR;		# private substitutions content strings
+  my $id = 0;		# last ID
+  sub SBS { return "$L$_[0]$R"; } # return complete private substitution identifier
+
+  # skip commented-out lines
+  $help =~ s/(\n\#.*)*\n/\n/g;
+
+  # add version/copyright section
+  my $built = " $CK_($PKGBUILT)$CD_" if $SUBVERSION ne "none";
+  $help .= "VERSION\n";
+  $help .= "    $PKGMSG$built\n\n";
+
+  # escapes
+  $help =~ s/\\\)/SBS "brc2"/eg;	# escaped bracket
+
+  ### PARSER ###
+
+  # CC(text)
+  $X{cc} = "cc";
+  my $RE1 = qr/(\((([^()]|(?-3))*)\))/x; # () group, $1=withparens, $2=without
+  $STR{$id++}=$4 while $help =~ s/([^A-Z0-9])(C[$colors])$RE1/$1.SBS("c$2$id")/e;
+
+  # options lists
+  $STR{$id++}=$2 while $help =~ s/(\n[ ]*)(-[a-zA-Z0-9]+(\[?[ =][A-Z]{2,}(x[A-Z]{2,})?\]?)?)([ \t])/$1.SBS("op$id").$5/e;
+
+  # bracketed uppercase words
+  $STR{$id++}="$1$2" while $help =~ s/\[([+-])?([A-Z]+)\]/SBS "br$id"/e;
+
+  # plain uppercase words, like sections headers
+  $STR{$id++}=$2 while $help =~ s/(\n|[ \t])(([A-Z_\/-]+[ ]?){4,})/$1.SBS("pl$id")/e;
+
+  ### PROCESSOR ###
+
+  # re-substitute
+  $help =~ s/${L}pl([0-9]+)$R/$CC_$STR{$1}$CD_/g;
+  $help =~ s/${L}op([0-9]+)$R/$CC_$STR{$1}$CD_/g;
+  $help =~ s/${L}br([0-9]+)$R/\[$CC_$STR{$1}$CD_\]/g;
+
+  # CC(text)
+  my %cc; $cc{$_} = ${C.$_._} for split //,$colors;
+  $help =~ s/${L}cC([$colors])([0-9]+)$R/$cc{$1}$STR{$2}$CD_/g;
+
+  # escapes
+  $help =~ s/${L}brc2$R/)/g;
+
+  ### POSTPROCESSOR ###
+
+  # star bullets
+  $help =~ s/\n    \* /\n    $CC_\*$CD_ /g;
+
+  print $help; }
+
+}
+# filelib-0.1b (c) R.Jaksa 2019, GPLv3
+# built: ~/prj/libraries/filelib/filelib.pl
+# installed: /map/filelib/pl/filelib.pl
+
+{
+
+my $CR_="\033[31m"; # color red
+my $CD_="\033[0m";  # color default
+
+my sub error_ {
+  print STDERR "$CR_$_[0]$CD_\n";
+  exit 1; }
+
+# return mtime of file (the last modification time of file content)
+our sub getmtime {
+  my  $file = $_[0];
+  my $mtime = (stat($file))[9] if -e $file;
+  return $mtime; }
+
+# return ctime of file (last mode-modification time of the file)
+our sub getmmtime {
+  my   $file = $_[0];
+  my $mmtime = (stat($file))[10] if -e $file;
+  return $mmtime; }
+
+# return file creation time
+our sub getctime {
+  my  $file = $_[0];
+  my $ctime = `stat -c %W '$file'` if -e $file;
+  return $ctime; }
+
+# check if file f1 is newer then f2
+our sub newer {
+  my $f1 = $_[0]; return 0 if not -f $f1; # always none < f2 => 0 
+  my $f2 = $_[1]; return 1 if not -f $f2; # always f1 > none => 1
+  my $t1 = getmtime $f1;
+  my $t2 = getmtime $f2;
+  return 1 if $t1 > $t2;
+  return 0; }
+
+# check if directory d1 is newer then d2
+our sub newerdir {
+  my $d1 = $_[0]; return 0 if not -d $d1; # always none < d2 => 0 
+  my $d2 = $_[1]; return 1 if not -d $d2; # always d1 > none => 1
+  my $t1 = getmtime $d1;
+  my $t2 = getmtime $d2;
+  return 1 if $t1 > $t2;
+  return 0; }
+
+# write file from string
+our sub writefile {
+  my $file = shift;
+  my $body = shift;
+  my  %arg = @_; # msg=>sub{verbose "write file","$file" if $VERBOSE;}
+  $arg{msg}->() if defined $arg{msg};
+  error_ "Can't create file \"$file\" ($!)." if not open O,">$file";
+  print O $body;
+  close(O); }
+
+# append string to file
+our sub addtofile {
+  my $file = shift;
+  my $body = shift;
+  my  %arg = @_; # msg=>sub{verbose "append to file","$file" if $VERBOSE;}
+  $arg{msg}->() if defined $arg{msg};
+  error_ "Can't append to file \"$file\" ($!)." if not open O,">>$file";
+  print O $body;
+  close(O); }
+
+# read the first line
+our sub firstline {
+  my $file = $_[0];
+  my $body;
+  error_ "Can't read file \"$file\" ($!)." if not open FILE,"<$file";
+  $body = <FILE>;
+  close(FILE);
+  return $body; }
+
+# return basename without directory and without suffix
+our sub basename {
+  my $f = $_[0];
+  $f =~ s/^.*\///;
+  $f =~ s/\..*$//;
+  return $f; }
+
+# return file name from path
+our sub fname {
+  my $f = $_[0];
+  $f =~ s/^.*\///;
+  return $f; }
+
+# return directory part of path
+our sub dirname {
+  return $1 if $_[0] =~ /^(.*)\/[^\/]*$/; }
+
+# quote the file path
+our sub quotepath {
+  my $f = quotemeta $_[0];
+  $f =~ s/\\\//\//g;
+  $f =~ s/\\\././g;
+  $f =~ s/\\\-/-/g;
+  return $f; }
+
+# create directory
+use subs 'mkdir';				# to allow mkdir redefine
+our sub mkdir {
+  my $dir=shift;				# directory path
+  my %arg = @_; # msg=>sub{verbose "make directory","$dir" if $VERBOSE;}
+  my $qdir = quotepath($dir);			# quoted for shell
+  if(not $dir eq "" and not -d $dir) {
+    $arg{msg}->() if defined $arg{msg};
+    system "mkdir -p $qdir"; }}			# can be done in-perl
+
+}
+
+# TODO: 1st html then copy
+# TODO: progress by dots, comma for new cluster
+
+# --------------------------------------------------------------------------------- HELP
+my $HELPMAN=<<EOF;
+
+NAME
+    impage - image browser using html
+
+USAGE
+    impage [OPTIONS] [CSV]... [CC(DIRECTORIES/FILES)]...
+
+DESCRIPTION
+    Impage creates webpage interlinked to in-place images to allow
+    browsing them together.  Input is either the CSV file, or
+    directories with images.
+
+    CSV file expects fields: path, cluster, dist, pdist and bad
+    form the CC(imclust) tool.
+
+    For relative paths, the output location is current directory,
+    for absolute paths it is the /tmp/impage... directory.  If at
+    least one path is absolute, the rest is converted to absolute.
+
+OPTIONS
+      -h  This help.
+      -v  More verbose.
+ -r ROOT  Root directory, needed if relative path in CSV requires it.
+   CC(-s/-m)  Singlepage/multipage output.
+      -t  Use thumbnails (to speedup remote access).
+     -tt  Also reference thumbnails when clicking on image (not orig).
+   -tpng  Make png thumbnails.
+   -topq  Make opaque thumbnails, ignore alpha channel.
+    -tcp  Copy orig images as a thumbnails.
+  -q=NUM  Quality for jpeg compression of thumbnails (dflt. CC(75)).
+ -g=GEOM  Geometry of thumbnails (aka CC(128), CC(x196), CC(640x480)).
+   -gmax  Don't limit the size of images displayed.
+ CC(-rl/-rr)  Rotate images left/right, when making thumbnails.
+
+EXAMPLES
+    To browse two directories (of any depth) of images:
+        CW(impage directory1 directory2
+        firefox /tmp/impage/index.html)
+
+    To browse clustered images:
+        CW(imclust -csv -c 20 directory1 directory2 
+        impage clust.csv
+        firefox /tmp/impage/clust/index.html)
+
+    To browse remotely use CW(impage -t) to speedup the transfer.
+    On the local site, if ssh tunel is necessary, create it:
+        CW(ssh -L 9000:localhost:9000 REMOTE_IP -p REMOTE_SSH_PORT)
+    Where the CW(REMOTE_IP) is IP of remote host (aka 192.168.0.10)
+    accesible through ssh using the CW(REMOTE_SSH_PORT) port.
+    Then, on the remote site:
+        CW(imclust -csv -c 20 directory1 directory2 
+        impage -t clust.csv
+        twistd -n web -l /dev/null -p tcp:9000 --path /)
+    This setup exposes everything on disk visible to you, to
+    allow you to see images located anywhere on disk.  If you
+    don't want this, use only relative paths in the impage and
+    expose only a selected directory (example below).  Then use
+    the browser on the local site:
+        CW(firefox localhost:9000/tmp/impage/clust)
+
+    To browse remotely from self-contained directory: on the
+    remote site, copy images to the target directory:
+        CW(cp -a /absolutepath/directory1 /tmp/impage/img)
+    Then cluster it and impage using only relative paths:
+        CW(cd /tmp/impage
+        imclust -csv -c 20 img
+        impage -t clust.csv)
+    Then expose only the target directory:
+        CW(twistd -n web -l /dev/null -p tcp:9000 --path /tmp/impage)
+     or CK(busybox httpd -f -p 9000 -h /tmp/impage)
+    And browse:
+        CW(firefox localhost:9000/clust)
+
+REQUIRES
+    CW(parallel) and CW(ImageMagick) to create thumbnails (with CC(-t))
+
+EOF
+
+# -------------------------------------------------------------------------------- ARGVS
+my $VERBOSE;
+for(@ARGV) { if($_ eq "-h") { printhelp($HELPMAN); exit 0; }}
+for(@ARGV) { if($_ eq "-v") { $VERBOSE=1; $_=""; last; }}
+
+my $THUMBNAILS;
+my $THUMBPNG;
+my $THUMBCOPY;
+for(@ARGV) { if($_ eq "-t") { $THUMBNAILS=1; $_=""; last; }}
+for(@ARGV) { if($_ eq "-tt") { $THUMBNAILS=1; $REFTHUMB=1; $_=""; last; }}
+for(@ARGV) { if($_ eq "-tpng") { $THUMBNAILS=1; $THUMBPNG=1; $_=""; last; }}
+for(@ARGV) { if($_ eq "-topq") { $THUMBNAILS=1; $THUMBOPQ=1; $_=""; last; }}
+for(@ARGV) { if($_ eq "-tcp") { $THUMBNAILS=1; $THUMBCOPY=1; $_=""; last; }}
+for(@ARGV) { if($_ eq "-rl") { $ROTLEFT=1; $_=""; last; }}
+for(@ARGV) { if($_ eq "-rr") { $ROTRIGHT=1; $_=""; last; }}
+
+my $SINGLEPAGE;
+my $MULTIPAGE;
+for(@ARGV) { if($_ eq "-s") { $SINGLEPAGE=1; $_=""; last; }}
+for(@ARGV) { if($_ eq "-m") { $MULTIPAGE=1; $_=""; last; }}
+
+my $GEOMETRY;
+my $QUALITY;
+for(@ARGV) { if($_ =~ /^-g=([0-9x]+)$/)	{ $GEOMETRY=$1; $_=""; last; }}
+for(@ARGV) { if($_ =~ /^-q=([0-9]+)$/)	{ $QUALITY=$1; $_=""; last; }}
+my $GMAX;
+for(@ARGV) { if($_ eq "-gmax") { $GMAX=1; $_=""; last; }}
+
+our $ROOT;
+for($i=0;$i<$#ARGV;$i++) {
+  next if $ARGV[$i] eq "";
+  next if $ARGV[$i] ne "-r";
+  $ROOT = $ARGV[$i+1];
+  $ARGV[$i]=""; $ARGV[$i+1]=""; last; }
+
+my $CSV;
+for($i=0;$i<=$#ARGV;$i++) {
+  next if $ARGV[$i] eq "";
+  next if not $ARGV[$i] =~ /\.csv$/;
+  $CSV=$ARGV[$i]; $ARGV[$i]=""; last; }
+
+my @PATHS;
+for($i=0;$i<=$#ARGV;$i++) {
+  next if $ARGV[$i] eq "";
+  push @PATHS,$ARGV[$i]; $ARGV[$i]=""; }
+
+# print " - $_\n" for @PATHS;
+
+# ------------------------------------------------------------------------------- PARSER
+my $HASHDR = 0; # whether the CSV has a header
+my %COL;	# columns map ($COL{row_name} = row_idx)
+my @CLNM;	# cluster names ($CLNM[3] is name of third cluster)
+my @CLST;	# array of arrays of paths per cluster (@{$CLST[3]} is third cluster)
+my %CSVL;	# full CSV line for given path ($CSVL{02/44.jpg} = "02/44.jpg 96 66.0 71.9 0")
+my @DIRS;	# list of dirs
+my $N = 0;	# no. of images
+my $M = 1;	# no. of clusters (start with the cluster1, not cluster0)
+# --------------------------------------------------------------------- IMAGES FROM CSVS
+
+if(defined $CSV) {
+
+  # get columns map
+  my $line1 = `head -n 1 "$CSV"`; chomp $line1;
+  if($line1 =~ s/^#//) {
+    $HASHDR = 1;
+    my @line = split /\h/,$line1;
+    $COL{$line[$_]}=$_ for 0..$#line;
+    if($VERBOSE) {
+      print "CSV row $COL{$_}: $_\n" for sort {$COL{$a} <=> $COL{$b}} keys %COL; }}
+  # print "center: $COL{center}  \n" if defined $COL{center};
+
+  # get clusters
+  open my $fd,$CSV or die "Can't open $CSV: $!";
+  while(my $l=<$fd>) {
+    next if $l=~/^\#/;
+    my @line = split /[\h\n]/,$l;
+    my $c = @line[$COL{cluster}];
+
+    # 1. use 1st column as a pathname
+    my $p = @line[1];
+    my $d = dirname $p;
+
+    # 2. use "path" column
+    if(defined $COL{path}) {
+      $p = @line[$COL{path}];
+      $d = dirname $p;
+      if(defined $ROOT) {		# prepend the ROOT dir if defined
+	$p = "$ROOT/".fname($p);
+	$d = $ROOT; }}
+
+    # 3. or use the "file" column
+    elsif(defined $COL{file}) {
+      $p = @line[$COL{file}];
+      $d = "";
+      if(defined $ROOT) {		# prepend the ROOT dir if defined
+	$p = "$ROOT/$p";
+	$d = $ROOT; }}
+
+    # print "$c $p ($d) -> @line\n";
+    pushq \@DIRS,$d;			# add new dir if it's new
+    push @{$CLST[$c]},$p;		# add path to cluster
+    $CSVL{$p} = \@line;			# save the CSV line
+    $N++; }				# increment the no. of images
+  close $fd or die "Couldn't write $CSV: $!\n"; }
+
+# ---------------------------------------------------------------- DIRECT IMAGES BY PATH
+
+if(not defined $CSV) {
+
+  # find all potential images
+  my @img;
+  for my $p (@PATHS) {
+    my $cmd = "find '$p' -type f -name '*.jpg' -o -name '*.png'";
+    push @img,split(/\n/,`$cmd`); }
+
+  # find all subdirs
+  my %i2d;	# image-to-dir map
+  my %dirmap;	# dirname to cluster-id map
+  for my $p (@img) {
+    my $d = dirname $p;
+    if(not inar \@DIRS,$d) {
+      push @DIRS,$d;
+      $dirmap{$d} = $M;
+      $CLNM[$M] = $d;
+      $M++; }
+    $i2d{$p} = $dirmap{$d}; }
+
+  # define the CSV line
+  $COL{path} = 0 if not defined $COL{path};
+  if(not $HASHDR) {
+    $COL{cluster} = 1;
+    $COL{dist} = 2;
+    $COL{pdist} = 3;
+    $COL{bad} = 4; }
+
+  # distribute images
+  for my $p (@img) {
+    my $m = $i2d{$p}; # cluster id (the path id)
+    push @{$CLST[$m]},$p;
+    $CSVL{$p} = ($p,$m,0,0,0);
+    $N++; }
+
+}
+
+# ---------------------------------------------------------------------- ALL_IMAGES LIST
+my @IMG;	# all images from CLST
+
+my $k = 0;
+for my $j (0..$#CLST) {
+  next if $#{$CLST[$j]} < 0;
+  for my $i (0..$#{$CLST[$j]}) {
+    $IMG[$k++] = $CLST[$j][$i]; }}
+
+# --------------------------------------------------------------------- DEBUG PRINT LIST
+
+if(0) {
+  for my $j (0..$#CLST) {
+    next if $#{$CLST[$j]} < 0;
+    print "$j ->";
+    for my $i (0..$#{$CLST[$j]}) {
+      print " $CLST[$j][$i]"; }
+    print "\n"; }
+exit; }
+
+# print "$_ " for @IMG; exit;
+
+# -------------------------------------------------------------------------------- FINAL
+
+# number of clusters
+$M = $#CLST + 1;
+
+# singlepage logic
+my $singlepage = 0;
+   $singlepage = 1 if $N <= 2000;
+if(defined $SINGLEPAGE) {}
+elsif(defined $MULTIPAGE) { $SINGLEPAGE = 0; }
+else { $SINGLEPAGE = $singlepage; }
+
+# ------------------------------------------------------------------------------- OUTPUT
+
+#my $OUTDIR = "/tmp/impage-$ENV{USER}";
+my $OUTDIR = "/tmp/impage";
+my $SUBDIR = "html";
+
+if(defined $CSV) {
+  $SUBDIR = fname $CSV;
+  $SUBDIR =~ s/\.csv$//; }
+elsif(@PATHS==1) {
+  $SUBDIR = "/$PATHS[0]"; }
+
+mkdir "$OUTDIR/$SUBDIR";
+
+# ---------------------------------------------------------------------- MAKE THUMBNAILS
+my @THMD = @DIRS; # thumbnails dirs
+my %THM;	  # thumbnails paths
+my %NAME;	  # image names (without redundat part of path)
+my %PATH;	  # image path (converted to absolute if needed)
+
+# return toplevel directory from the path (incl. slash), or empty string
+sub topdir {
+  my $dir = $_[0];
+  return $1 if $dir =~ /^(\/?[^\/]*\/?)/;
+  return ""; }
+
+# return 1 if prefix in all paths
+sub preinall {
+  my $dirs = $_[0];
+  my $pre  = $_[1];
+  return 0 if $pre eq "";
+  for my $i (0..$#{$dirs}) {
+    my $p = $$dirs[$i];
+    return 0 if not $p =~ /^$pre/; }
+  return 1; }
+
+# remove prefix from whole array
+sub rmpre {
+  my $dirs = $_[0];
+  my $pre  = $_[1];
+  for my $i (0..$#{$dirs}) {
+    $$dirs[$i] =~ s/^$pre//; }}
+
+# current working directory
+use Cwd qw(getcwd);
+my $CWD = getcwd;
+
+# check whether absolute path is present
+my $HASABS;
+for my $p (@IMG) {
+  if($p =~ /^\//) {
+    $HASABS = 1;
+    last; }}
+# print "hasabs = $HASABS\ncwd = $CWD\n";
+
+# convert to absolute path if needed
+for my $p (@IMG) {
+  $PATH{$p} = "$p"; }
+if(defined $HASABS) {
+  for my $p (@IMG) {
+    $PATH{$p} = "$CWD/$p" if $p =~ /^[^\/]/; }
+  for my $p (@THMD) {
+    $p = "$CWD/$p" if $p =~ /^[^\/]/; }
+  for my $p (@DIRS) {
+    $p = "$CWD/$p" if $p =~ /^[^\/]/; }}
+
+# remove redundant-path prefix from THMD (present in all dirs)
+if(0) {
+
+my $top = topdir $THMD[0]; # print "[$THMD[0]] -> [$top]\n";
+my $pre = "";		  # total path prefix to remove
+while(preinall(\@THMD,$top)) {
+  # print "[$THMD[0]] -> [$top] ($pre)\n";
+  rmpre \@THMD,$top;
+  $pre .= $top;
+  $top = topdir $THMD[0]; }
+$pre .= "/" if $pre ne "" and not $pre =~ /\/$/;
+# print "redundant prefix: $pre\n";
+
+}
+
+# thumbnails root directory
+my $thmdir = "$OUTDIR/thm";
+
+# prepare THM names
+for my $p (@IMG) {
+  ($NAME{$p}=$PATH{$p}) =~ s/^$pre//;
+  ( $THM{$p}=$PATH{$p}) =~ s/^$pre/$thmdir\//;
+  next if $THUMBCOPY;
+  if($THUMBPNG)	{ $THM{$p} =~ s/\....$/\.png/; }
+  else		{ $THM{$p} =~ s/\....$/\.jpg/; }}
+# print "$_ -> $PATH{$_} -> $NAME{$_} -> $THM{$_}\n" for @IMG; exit;
+
+# batch-parallel create thumbnails
+if($THUMBNAILS) {
+
+  # prepar dirs for thumbnails
+  mkdir $thmdir;
+  for my $p (@THMD) {
+    $p = "$thmdir/$p";
+    mkdir $p; }
+  # print "$pre => $thmdir/\n"; print "$DIRS[$_] -> $THMD[$_]\n" for 0..$#DIRS;
+
+  # set up the geometry
+  $GEOMETRY = "x196" if not defined $GEOMETRY;
+  $QUALITY  = 80     if not defined $QUALITY;
+  my $pre = "";
+     $pre = "-alpha off" if $THUMBOPQ;
+  my $con = "-resize $GEOMETRY -quality $QUALITY";
+     $con .= " -rotate -90" if $ROTLEFT;
+     $con .= " -rotate 90" if $ROTRIGHT;
+  my $cmd = "convert $pre IN $con OU";
+     $cmd = "cp -a IN OU" if $THUMBCOPY;
+     $cmd =~ s/IN/"\$IN"/g;
+     $cmd =~ s/OU/"\$OU"/g;
+
+  # prepare the conversion script
+  my $CONV = "$OUTDIR/conv";
+  my $conv=<<EOF;
+#!/bin/bash
+for s in \$*; do
+  IN=`echo \$s | sed 's:%%%.*\$::'`
+  OU=`echo \$s | sed 's:^.*%%%::'`
+  if test "\$OU" -nt "\$IN"; then break; fi
+# echo "__CMD__"
+        __CMD__
+  echo -n "."
+done
+EOF
+  $conv =~ s/__CMD__/$cmd/g;
+  writefile $CONV,$conv;
+  system "chmod 775 $CONV";
+
+  # batchsize, limited to 64 max
+  my $BATCH = ($#IMG+1)/8;
+  $BATCH=64 if $BATCH>64;
+  $BATCH=1  if $BATCH<1;
+
+  # make thumbnails
+  open $pipe, "| parallel -u -L $BATCH $CONV" or die "Can't pipe: $!";
+  for(@IMG) { print $pipe "$_%%%$THM{$_}\n" if -f $_; }
+  close $pipe or die "Can't close pipe: $!";
+
+  # remove thumbnailer
+  #system "rm -f $CONV";
+}
+
+# make thumbnails paths back relative if needed
+if(not $HASABS) {
+  for my $p (@IMG) {
+    $THM{$p} =~ s/^$OUTDIR\///; }}
+
+# ------------------------------------------------------------------------------ WEBPAGE
+# do not edit! auto-generated from: web/web.html web/web.css web/web.js
+
+our $JAVASCRIPT=<<EOF;
+function toepo(yes) {
+  var s1 = "spat"; 
+  var s2 = "sepo"; 
+  if(!yes) { var s=s1; s1=s2; s2=s; }
+  var e1 = document.getElementsByClassName(s1);
+  var e2 = document.getElementsByClassName(s2);
+  for(i=0;i<e1.length;i++) {
+    e1[i].style.display = "inline";
+    e1[i].style.display = "none"; }
+  for(i=0;i<e2.length;i++) {
+    e2[i].style.display = "none";
+    e2[i].style.display = "inline"; }}
+function onoff(obj,cls) {
+  var el = document.getElementsByClassName(cls);
+  if(obj.checked) {
+    for(i=0;i<el.length;i++) el[i].style.display = "inline-block"; }
+  else {
+    for(i=0;i<el.length;i++) el[i].style.display = "none"; }}
+function initit() {
+  {INITIT}
+  onoff(document.getElementById("idsc"),"dsc");
+  if(document.getElementById("iepo").checked) toepo(1); }
+EOF
+
+our $CSS=<<EOF;
+html {
+  background-color: #444051;
+  font-family: 'Roboto Condensed', sans-serif; }
+div {
+  display: inline-block; }
+div.plot {
+  position: fixed; display: block;
+  top: 8px; right: 8px;
+  border: 4px solid #3584E4;
+  border-radius: 12px;
+  padding: 8px 12px;
+  background-color: #D0D0D060;
+  z-index: 10; }
+div.menu {
+  position: fixed; display: block;
+  bottom: 33px; right: 8px;
+  border: 4px solid #3584E4;
+  border-radius: 12px;
+  padding: 8px 12px;
+  background-color: #D0D0D060;
+  z-index: 10; }
+div.menu hr {
+  border: 0;
+  border-top: 2px solid black; }
+div.copy {
+  position: fixed; display: block;
+  bottom: 0px; right: 8px;
+  color: #3584E4;
+  padding: 8px 12px;
+  z-index: 10; }
+div.dsc {
+  vertical-align: bottom;
+  text-align: right;
+  color: #D0D0D0;
+  width: 120px;
+  padding: 0 4px 2px 2px; }
+div.dsc hr {
+  margin: 6px 0 6px auto;
+  width: 80px;
+  border: 0;
+  border-top: 2px solid #D0D0D0; }
+span.sepo {
+  display: none; }
+input {
+  vertical-align: top;
+  margin: 2px 8px 4px 2px; }
+label {
+  vertical-align: top; }
+div.box {
+  position: relative; }
+div.box div.hi {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: none; }
+div.box:hover div.hi {
+  display: block; }
+div.divider {
+  display: inline-block;
+  vertical-align: middle;
+  width: 0px;
+  height: 60px;
+  margin: 6px;
+  border: 6px solid white; }
+.bad {
+  position: relative;
+  overflow: hidden; }
+.bad:before, .bad:after {
+  position: absolute;
+  content: '';
+  background: red;
+  display: block;
+  width: 75%;
+  height: 8px;
+  -webkit-transform: rotate(-45deg);
+  transform: rotate(-45deg);
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto; }
+.bad:after {
+  -webkit-transform: rotate(45deg);    
+  transform: rotate(45deg); }
+h1 {
+  color: white; }
+h2 {
+  color: white; }
+EOF
+
+our $HTML=<<EOF;
+<!DOCTYPE html>
+<html>
+<head>
+<title>impage</title>
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
+<style type="text/css">
+{CSS}
+</style>
+<script type='text/javascript'>
+{JAVASCRIPT}
+</script>
+</head>
+<body>
+{BODY}
+<script type='text/javascript'>document.onload=initit()</script>
+</body>
+</html>
+EOF
+our ($HTML,$CSS,$JAVASCRIPT);
+$HTML =~ s/\{CSS\}/$CSS/;
+
+$hover = "";
+
+my $HDR = "$N images in ".($M-1)." clusters";
+   $HDR = "$CSV:&nbsp; $HDR" if defined $CSV;
+   $HDR = "<h1>$HDR</h1>\n\n";
+
+# geometry
+my $h = 196;
+   $h = $1 if $GEOMETRY=~/x([0-9]+)$/;
+my $height = " height=$h";
+   $height = "" if defined $GMAX;
+
+# overview page
+my $body0 .= "<div class=line>\n";
+for my $j (0..$#CLST) {
+  next if $#{$CLST[$j]} < 0;
+  my $p = $CLST[$j][0];
+  my $bad = ""; $bad = " bad" if defined $COL{bad} and $CSVL{$p}[$COL{bad}];
+  my $class = "k$j";
+  my $n = $#{$CLST[$j]} + 1;
+  my $title = "$n images in cluster $j";
+     $title .= " $CLNM[$j]" if defined $CLNM[$j];
+  my $src = $PATH{$p}; 
+     $src = "../$src" if not $HASABS;
+     $src = "../$THM{$p}" if $THUMBNAILS;
+  $body0 .= "<a href=\"$class.html\"><div class=\"box $class$bad\">";
+  $body0 .= "<div><img class=$class src=\"$src\" title=\"$title\"$height></div>";
+  $body0 .= "$hover</div></a>\n"; }
+$body0 .= "</div>\n\n";
+
+# cluster pages (or singlepage view)
+for my $j (0..$#CLST) {
+  next if $#{$CLST[$j]} < 0;
+  my $class = "k$j";
+  my $n = $#{$CLST[$j]} + 1;
+  my $title = "$n images in cluster $j";
+     $title .= " $CLNM[$j]" if defined $CLNM[$j];
+  my $body  = "";
+     $body .= "<h2>$title</h2>\n" if $SINGLEPAGE;
+     $body .= "<div class=line>\n";
+  for my $i (0..$#{$CLST[$j]}) {
+    my $p = $CLST[$j][$i];
+    my $bad = ""; $bad = " bad" if defined $COL{bad} and $CSVL{$p}[$COL{bad}];
+    my $id = sprintf "%.d:",$i+1;
+    my $pdist = sprintf " %.0f\%",$CSVL{$p}[$COL{pdist}];
+    my $dist = sprintf " %.0fcm",$CSVL{$p}[$COL{dist}];
+    my $title = $id.$pdist.$dist;
+       $title = "$id $NAME{$p}" if not defined $CSV;
+    my $src = $PATH{$p}; 
+       $src = "../$src" if not $HASABS;
+       $src = "../$THM{$p}" if $THUMBNAILS;
+    my $href = $PATH{$p};
+       $href = "../$href" if not $HASABS;
+       $href = "../$THM{$p}" if $REFTHUMB;
+    $body .= "<a href=\"$href\"><div class=\"box $class$bad\">";
+    $body .= "<div><img class=$class src=\"$src\" title=\"$title\"$height></div>";
+    $body .= "$hover</div></a>\n"; }
+  $body .= "</div>\n\n";
+
+  if(not $SINGLEPAGE) {
+    my $hdr = "<h1>$title</h1>\n\n";
+    my $html = $HTML;
+    $html =~ s/\{BODY\}/$hdr$body/;
+    # print "write: $OUTDIR/$SUBDIR/$class.html\n";
+    writefile "$OUTDIR/$SUBDIR/$class.html",$html; } 
+
+  $BODY .= $body; }
+
+$BODY = $body0 if not $SINGLEPAGE;
+
+$HTML =~ s/\{BODY\}/$HDR$BODY/;
+
+#print $BODY;
+
+print "write: $OUTDIR/$SUBDIR/index.html\n";
+writefile "$OUTDIR/$SUBDIR/index.html",$HTML;
+
+# --------------------------------------------------------------------------------------
